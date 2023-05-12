@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>guest book</title>
+    <style>
+      #content {
+        width: 20%;
+        height: 60px;
+        resize: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="guest-book-container">
+      <div id="guest-book-write-area">
+        <div class="info-area">
+          <label for="name">이름<input type="text" name="name" id="text-name" /></label>
+          <label for="email">이메일<input type="text" name="email" id="text-email" /></label>
+        </div>
+        <div class="content-area">
+          <textarea name="content" id="content"></textarea>
+        </div>
+        <div id="button-area">
+          <button id="submit">등 록</button>
+        </div>
+      </div>
+      <div id="guest-book-view-area">
+        <!-- 동적 생성 영역 -->
+      </div>
+    </div>
+  </body>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script>
+    //////////////////////////////////////////////////////////////
+    // 메인 화면 로딩 끝나면 방명록 목록 불러와서 동적으로 생성 //
+    //////////////////////////////////////////////////////////////
+    window.onload = function () {
+      axios
+        .get("/guestBooks")
+        .then((res) => {
+          // posts에 방명록 목록 저장
+          const posts = res.data;
+
+          // 방명록에 전체 데이터 추가
+          //   if (posts != "undefined" && posts) {
+          if (Array.isArray(posts)) {
+            appendPost(posts);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    };
+
+    //////////////////////////////////////////////////////////////////
+    // 등록 버튼을 누르면 유효성 검사 후 방명록 등록                //
+    // 등록 후 현재 방명록 목록의 마지막에 등록한 방명록 추가해줌   //
+    //////////////////////////////////////////////////////////////////
+    const submitBtn = document.querySelector("#submit");
+    submitBtn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      const name = document.querySelector("#text-name").value;
+      const email = document.querySelector("#text-email").value;
+      const content = document.querySelector("#content").value;
+      const postData = {
+        name,
+        email,
+        content,
+      };
+      axios
+        .post("/guestBooks", postData)
+        .then((res) => {
+          // 객체를 배열로 변환(appendPost에서 forEach를 사용하기 위해서)
+          let posts = [];
+          const post = res.data;
+          posts.push(post);
+          // 방명록에 새 데이터 추가
+          appendPost(posts);
+        })
+        .catch((err) => {
+          console.error(err);
+        });
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+    ////////////////////////////////////////////
+    // posts 정보로 글 목록을 만들어주는 함수 //
+    ////////////////////////////////////////////
+    function appendPost(posts) {
+      const viewArea = document.querySelector("#guest-book-view-area");
+      if (posts.length > 1) {
+        // guest-book-view-area(방명록 목록) 초기화
+        // 글을 추가하는 경우는 초기화 x
+        // 글 목록 전체를 만드는 경우에만 초기화하고 새로 그린다
+        viewArea.innerHTML = "";
+      }
+      posts.forEach((post) => {
+        // post 생성
+        const postContainer = document.createElement("div");
+        postContainer.innerHTML = `
+                    <input type="hidden" id="postId" value=${post.id}>
+                    <div class="info-area">
+                        <span id="name">${post.name}</span>
+                        <span id="email">${post.email}</span>
+                    </div>
+                    <div class="content-area">
+                        <p id="content">${post.content}</p>
+                    </div>
+                    <div id="button-area">
+                        <button id="update">수 정</button><button id="delete">삭 제</button>
+                    </div>
+                `;
+        /////////////////////////////
+        // 삭제 버튼에 이벤트 등록 //
+        /////////////////////////////
+        const deleteBtn = postContainer.querySelector("#delete");
+        deleteBtn.addEventListener("click", () => {
+          const postId = postContainer.querySelector("#postId").value;
+          axios
+            .delete(`/guestBooks/${postId}`)
+            .then((res) => {
+              if (res.data) {
+                console.log(`삭제한 row수 : ${res.data}, 삭제 성공`);
+                // 삭제 후 리스트 갱신 해줘야함
+              } else {
+                console.log(`삭제한 row수 : ${res.data}, 삭제 실패`);
+              }
+            })
+            .catch((err) => {
+              console.error(err);
+            });
+        });
+
+        /////////////////////////////
+        // 수정 버튼에 이벤트 등록 //
+        /////////////////////////////
+        const updateBtn = postContainer.querySelector("#update");
+
+        viewArea.appendChild(postContainer);
+      });
+    }
+  </script>
+</html>
