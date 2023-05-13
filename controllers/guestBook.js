@@ -30,18 +30,36 @@ exports.writePost = (req, res, next) => {
     });
 };
 
-
 exports.deletePost = (req, res, next) => {
-    const {postId} = req.params;
-    console.log(`postid = ${postId}`);
+  const { postId } = req.params;
+  console.log(`postid = ${postId}`);
 
-    Guest.destroy({
-        where: { id: postId },
-    })
-    .then((response) =>{
-        res.json(response);
+  Guest.destroy({
+    where: { id: postId },
+  })
+    .then((response) => {
+      res.json(response);
     })
     .catch((err) => {
-        console.error(err);
+      console.error(err);
+    });
+};
+
+exports.updatePost = (req, res, next) => {
+  const { postId } = req.params;
+  const { name, email, content } = req.body;
+  console.log(req.body);
+  Guest.update({
+    name: name,
+    email: email,
+    content: content,
+  }, {
+    where: {id: postId},
+  })
+    .then((response) => {
+      res.json(response);
     })
-}
+    .catch((err) => {
+      console.error(err);
+    });
+};

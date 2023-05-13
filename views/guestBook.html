@@ -6,14 +6,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>guest book</title>
     <style>
-      #content {
-        width: 20%;
-        height: 60px;
+      #guest-book-container {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #guest-book-write-area {
+        max-width: 50%;
+        margin-bottom: 10px;
+        border: 1px solid black;
+      }
+
+      .content-area textarea {
+        width: 100%;
+        height: 100px;
         resize: none;
+        box-sizing: border-box;
+      }
+
+      #button-area {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        width: 100%;
+      }
+
+      #button-area button {
+        margin-bottom: 3px;
+        margin-right: 5px;
+      }
+
+      #post-container {
+        border: 1px solid black;
+        max-width: 100%;
+      }
+      h1 {
+        text-align: center;
       }
     </style>
   </head>
   <body>
+    <h1>방명록</h1>
     <div id="guest-book-container">
       <div id="guest-book-write-area">
         <div class="info-area">
@@ -27,6 +62,7 @@
           <button id="submit">등 록</button>
         </div>
       </div>
+      <hr />
       <div id="guest-book-view-area">
         <!-- 동적 생성 영역 -->
       </div>
@@ -62,39 +98,36 @@
     const submitBtn = document.querySelector("#submit");
     submitBtn.addEventListener("click", (ev) => {
       ev.preventDefault();
-      const name = document.querySelector("#text-name").value;
-      const email = document.querySelector("#text-email").value;
-      const content = document.querySelector("#content").value;
-      const postData = {
-        name,
-        email,
-        content,
-      };
-      axios
-        .post("/guestBooks", postData)
-        .then((res) => {
-          // 객체를 배열로 변환(appendPost에서 forEach를 사용하기 위해서)
-          let posts = [];
-          const post = res.data;
-          posts.push(post);
-          // 방명록에 새 데이터 추가
-          appendPost(posts);
-        })
-        .catch((err) => {
-          console.error(err);
-        });
+      const name = document.querySelector("#text-name");
+      const email = document.querySelector("#text-email");
+      const content = document.querySelector("#content");
+      if (name.value && email.value && content.value) {
+        const postData = {
+          name: name.value,
+          email: email.value,
+          content: content.value,
+        };
+        axios
+          .post("/guestBooks", postData)
+          .then((res) => {
+            // 단일 객체를 배열로 변환(appendPost에서 forEach를 사용하기 위해서)
+            let posts = [];
+            const post = res.data;
+            posts.push(post);
+            // 방명록에 새 데이터 추가
+            appendPost(posts);
+            // 입력창 초기화
+            name.value = "";
+            email.value = "";
+            content.value = "";
+          })
+          .catch((err) => {
+            console.error(err);
+          });
+      } else {
+        alert("이름, 이메일, 내용을 모두 입력해주세요");
+      }
     });
-
-
-
-
-
-
-
-
-
-
-
 
     ////////////////////////////////////////////
     // posts 정보로 글 목록을 만들어주는 함수 //
@@ -110,14 +143,15 @@
       posts.forEach((post) => {
         // post 생성
         const postContainer = document.createElement("div");
+        postContainer.setAttribute("id", "post-container");
         postContainer.innerHTML = `
                     <input type="hidden" id="postId" value=${post.id}>
                     <div class="info-area">
-                        <span id="name">${post.name}</span>
-                        <span id="email">${post.email}</span>
+                        <label for="name">이름<input id="name" value="${post.name}" disabled></label>
+                        <label for="email">이메일<input id="email" value="${post.email}" disabled></label>
                     </div>
                     <div class="content-area">
-                        <p id="content">${post.content}</p>
+                        <textarea id="content" disabled>${post.content}</textarea>
                     </div>
                     <div id="button-area">
                         <button id="update">수 정</button><button id="delete">삭 제</button>
@@ -134,7 +168,8 @@
             .then((res) => {
               if (res.data) {
                 console.log(`삭제한 row수 : ${res.data}, 삭제 성공`);
-                // 삭제 후 리스트 갱신 해줘야함
+                // DB에서 삭제 후 삭제 버튼을 포함하고 있는 게시글도 삭제
+                deleteBtn.parentNode.parentNode.remove();
               } else {
                 console.log(`삭제한 row수 : ${res.data}, 삭제 실패`);
               }
@@ -148,7 +183,49 @@
         // 수정 버튼에 이벤트 등록 //
         /////////////////////////////
         const updateBtn = postContainer.querySelector("#update");
+        updateBtn.addEventListener("click", () => {
+          const name = postContainer.querySelector("#name");
+          const email = postContainer.querySelector("#email");
+          const content = postContainer.querySelector("#content");
 
+          if (name.value && email.value && content.value) {
+            if (updateBtn.innerText == "수 정") {
+              updateBtn.innerText = "수정 완료";
+              name.disabled = false;
+              email.disabled = false;
+              content.disabled = false;
+            } else {
+              console.log("수정완료 누름");
+              const postId = postContainer.querySelector("#postId").value;
+              const postData = {
+                name: name.value,
+                email: email.value,
+                content: content.value,
+              };
+              axios
+                .put(`/guestBooks/${postId}`, postData)
+                .then((res) => {
+                  if (res.data) {
+                    console.log(`수정한 row수 : ${res.data}, 수정 성공`);
+                    // DB에서 수정 후 수정 버튼을 포함하고 있는 게시글 갱신
+                    updateBtn.innerText = "수 정";
+                    name.disabled = true;
+                    email.disabled = true;
+                    content.disabled = true;
+                  } else {
+                    console.log(`수정한 row수 : ${res.data}, 수정 실패`);
+                  }
+                })
+                .catch((err) => {
+                  console.error(err);
+                });
+            }
+          } else {
+            alert("이름, 이메일, 내용을 모두 입력해주세요");
+          }
+        });
+
+        // 작성한 post viewArea에 추가
         viewArea.appendChild(postContainer);
       });
     }
